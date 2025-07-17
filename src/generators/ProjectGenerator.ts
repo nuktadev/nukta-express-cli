@@ -1,8 +1,8 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { execSync } from 'child_process';
-import chalk from 'chalk';
-import { TemplateManager } from '../templates/TemplateManager';
+import fs from "fs-extra";
+import path from "path";
+import { execSync } from "child_process";
+import chalk from "chalk";
+import { TemplateManager } from "../templates/TemplateManager";
 
 export interface ProjectConfig {
   name: string;
@@ -36,20 +36,19 @@ export class ProjectGenerator {
     try {
       // Create project directory
       await this.createProjectDirectory();
-      
+
       // Generate project files
       await this.generateProjectFiles();
-      
+
       // Initialize git if requested
       if (this.config.git) {
         await this.initializeGit();
       }
-      
+
       // Install dependencies if requested
       if (this.config.install) {
         await this.installDependencies();
       }
-      
     } catch (error) {
       throw new Error(`Failed to generate project: ${error}`);
     }
@@ -59,27 +58,27 @@ export class ProjectGenerator {
     if (await fs.pathExists(this.projectPath)) {
       throw new Error(`Directory "${this.config.name}" already exists`);
     }
-    
+
     await fs.ensureDir(this.projectPath);
   }
 
   private async generateProjectFiles(): Promise<void> {
     const template = this.templateManager.getTemplate(this.config.template);
-    
+
     // Generate all files from template
     for (const file of template.files) {
       await this.generateFile(file);
     }
-    
+
     // Generate package.json
     await this.generatePackageJson();
-    
+
     // Generate README.md
     await this.generateReadme();
-    
+
     // Generate .env.example
     await this.generateEnvExample();
-    
+
     // Generate .gitignore
     await this.generateGitignore();
   }
@@ -87,16 +86,16 @@ export class ProjectGenerator {
   private async generateFile(fileConfig: any): Promise<void> {
     const filePath = path.join(this.projectPath, fileConfig.path);
     const dirPath = path.dirname(filePath);
-    
+
     // Ensure directory exists
     await fs.ensureDir(dirPath);
-    
+
     // Generate file content
     const content = await this.templateManager.renderTemplate(
       fileConfig.template,
       this.config
     );
-    
+
     // Write file
     await fs.writeFile(filePath, content);
   }
@@ -109,61 +108,61 @@ export class ProjectGenerator {
       main: "src/server.ts",
       repository: {
         type: "git",
-        url: `https://github.com/${this.config.author}/${this.config.name}.git`
+        url: `https://github.com/${this.config.author}/${this.config.name}.git`,
       },
       author: this.config.author,
       license: this.config.license,
-             scripts: {
-         build: "npx tsc && npm run copy-keys",
-         start: "node build/server.js",
-         dev: "nodemon src/server.ts",
-         "copy-keys": "cpx \"src/keys/**/*\" build/keys",
-         test: "jest",
-         "test:watch": "jest --watch",
-         lint: "eslint src/**/*.ts",
-         format: "prettier --write src/**/*.ts"
-       },
+      scripts: {
+        build: "npx tsc && npm run copy-keys",
+        start: "node build/server.js",
+        dev: "nodemon src/server.ts",
+        "copy-keys": 'cpx "src/keys/**/*" build/keys',
+        test: "jest",
+        "test:watch": "jest --watch",
+        lint: "eslint src/**/*.ts",
+        format: "prettier --write src/**/*.ts",
+      },
       dependencies: this.getDependencies(),
-      devDependencies: this.getDevDependencies()
+      devDependencies: this.getDevDependencies(),
     };
 
-    const filePath = path.join(this.projectPath, 'package.json');
+    const filePath = path.join(this.projectPath, "package.json");
     await fs.writeFile(filePath, JSON.stringify(packageJson, null, 2));
   }
 
   private getDependencies(): Record<string, string> {
     const baseDeps = {
-      "express": "^4.18.2",
-      "mongoose": "^8.2.1",
-      "dotenv": "^16.4.4",
-      "cors": "^2.8.5",
-      "helmet": "^7.1.0",
+      express: "^4.18.2",
+      mongoose: "^8.2.1",
+      dotenv: "^16.4.4",
+      cors: "^2.8.5",
+      helmet: "^7.1.0",
       "express-rate-limit": "^7.1.5",
       "express-async-errors": "^3.1.1",
       "express-promise-router": "^4.1.1",
-      "http-status-codes": "^2.3.0"
+      "http-status-codes": "^2.3.0",
     };
 
     if (this.config.authentication) {
       Object.assign(baseDeps, {
-        "bcrypt": "^5.1.1",
-        "jsonwebtoken": "^9.0.2",
+        bcrypt: "^5.1.1",
+        jsonwebtoken: "^9.0.2",
         "@types/bcrypt": "^5.0.2",
-        "@types/jsonwebtoken": "^9.0.2"
+        "@types/jsonwebtoken": "^9.0.2",
       });
     }
 
     if (this.config.logging) {
       Object.assign(baseDeps, {
-        "morgan": "^1.10.0",
-        "@types/morgan": "^1.9.9"
+        morgan: "^1.10.0",
+        "@types/morgan": "^1.9.9",
       });
     }
 
     if (this.config.validation) {
       Object.assign(baseDeps, {
-        "joi": "^17.11.0",
-        "@types/joi": "^17.2.3"
+        joi: "^17.11.0",
+        "@types/joi": "^17.2.3",
       });
     }
 
@@ -175,23 +174,23 @@ export class ProjectGenerator {
       "@types/express": "^4.17.13",
       "@types/node": "^20.10.0",
       "@types/cors": "^2.8.17",
-      "typescript": "^5.3.2",
+      typescript: "^5.3.2",
       "ts-node": "^10.9.1",
-      "nodemon": "^3.1.7",
-      "cpx": "^1.5.0",
-      "eslint": "^8.54.0",
+      nodemon: "^3.1.7",
+      cpx: "^1.5.0",
+      eslint: "^8.54.0",
       "@typescript-eslint/eslint-plugin": "^6.13.0",
       "@typescript-eslint/parser": "^6.13.0",
-      "prettier": "^3.1.0"
+      prettier: "^3.1.0",
     };
 
     if (this.config.testing) {
       Object.assign(baseDevDeps, {
-        "jest": "^29.7.0",
+        jest: "^29.7.0",
         "ts-jest": "^29.1.1",
         "@types/jest": "^29.5.8",
-        "supertest": "^6.3.3",
-        "@types/supertest": "^2.0.16"
+        supertest: "^6.3.3",
+        "@types/supertest": "^2.0.16",
       });
     }
 
@@ -214,14 +213,14 @@ ${this.config.description}
 - CORS configuration
 - Rate limiting
 - Security headers
-${this.config.testing ? '- Unit and integration testing\n' : ''}${this.config.docker ? '- Docker configuration\n' : ''}
+${this.config.testing ? "- Unit and integration testing\n" : ""}${this.config.docker ? "- Docker configuration\n" : ""}
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js (v16 or higher)
 - MongoDB
-${this.config.docker ? '- Docker (optional)\n' : ''}
+${this.config.docker ? "- Docker (optional)\n" : ""}
 ### Installation
 
 \`\`\`bash
@@ -279,7 +278,7 @@ The API will be available at \`http://localhost:5000\`
 ${this.config.license}
 `;
 
-    const filePath = path.join(this.projectPath, 'README.md');
+    const filePath = path.join(this.projectPath, "README.md");
     await fs.writeFile(filePath, readmeContent);
   }
 
@@ -309,7 +308,7 @@ CORS_ORIGIN=http://localhost:3000
 LOG_LEVEL=info
 `;
 
-    const filePath = path.join(this.projectPath, '.env.example');
+    const filePath = path.join(this.projectPath, ".env.example");
     await fs.writeFile(filePath, envContent);
   }
 
@@ -420,26 +419,30 @@ Thumbs.db
 src/keys/
 `;
 
-    const filePath = path.join(this.projectPath, '.gitignore');
+    const filePath = path.join(this.projectPath, ".gitignore");
     await fs.writeFile(filePath, gitignoreContent);
   }
 
   private async initializeGit(): Promise<void> {
     try {
-      execSync('git init', { cwd: this.projectPath, stdio: 'ignore' });
-      console.log(chalk.green('✓ Git repository initialized'));
+      execSync("git init", { cwd: this.projectPath, stdio: "ignore" });
+      console.log(chalk.green("📦 Git repository initialized"));
     } catch (error) {
-      console.log(chalk.yellow('⚠ Failed to initialize git repository'));
+      console.log(chalk.yellow("⚠ Failed to initialize git repository"));
     }
   }
 
   private async installDependencies(): Promise<void> {
     try {
-      console.log(chalk.blue('Installing dependencies...'));
-      execSync('npm install', { cwd: this.projectPath, stdio: 'inherit' });
-      console.log(chalk.green('✓ Dependencies installed successfully'));
+      console.log(chalk.blue("⚡ Installing dependencies..."));
+      execSync("npm install", { cwd: this.projectPath, stdio: "inherit" });
+      console.log(chalk.green("✅ Dependencies installed successfully"));
     } catch (error) {
-      console.log(chalk.yellow('⚠ Failed to install dependencies. Please run "npm install" manually.'));
+      console.log(
+        chalk.yellow(
+          '⚠ Failed to install dependencies. Please run "npm install" manually.'
+        )
+      );
     }
   }
-} 
+}

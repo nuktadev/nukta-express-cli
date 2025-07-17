@@ -63,11 +63,11 @@ nukta-express create my-api --yes
 
 ```bash
 # Create project with specific template
-nukta-express create my-api --template auth --no-git --no-install
+nukta-express create my-api --template auth --git --no-install
 
 # This will:
 # - Use auth template
-# - Skip git initialization
+# - Initialize git repository
 # - Skip dependency installation
 ```
 
@@ -79,7 +79,7 @@ nukta-express templates
 
 # Output:
 # Available Templates:
-# 
+#
 # • basic    - Minimal Express.js setup with TypeScript
 # • auth     - Express.js with authentication middleware
 # • full     - Complete setup with all features (recommended)
@@ -255,4 +255,4 @@ nukta-express create --help
 4. **Use Docker**: For consistent deployment environments
 5. **Follow the modular structure**: Add new features in the modules directory
 6. **Validate requests**: Use the built-in validation middleware
-7. **Handle errors properly**: Use the error handling middleware 
+7. **Handle errors properly**: Use the error handling middleware

@@ -21,6 +21,8 @@ Create production-ready Express.js applications with a single command. Perfect f
 - 📋 **Code Quality** - ESLint and Prettier configuration
 - 🎯 **Modular Architecture** - Clean, scalable project structure
 - 📚 **Comprehensive Documentation** - Detailed README and inline comments
+- 🎨 **Developer Friendly** - Beautiful CLI interface with clear prompts and visual feedback
+- 🔧 **Flexible Configuration** - Git initialization disabled by default for better workflow control
 
 ## 📦 Installation
 
@@ -73,14 +75,14 @@ nukta-express create my-api --yes
 ### Advanced Usage
 
 ```bash
-# Create project without git initialization
-nukta-express create my-api --no-git
+# Create project with git initialization (disabled by default)
+nukta-express create my-api --git
 
 # Create project without installing dependencies
 nukta-express create my-api --no-install
 
 # Combine multiple options
-nukta-express create my-api --template basic --yes --no-git
+nukta-express create my-api --template basic --yes --git
 ```
 
 ## 📋 Available Templates
@@ -169,7 +171,7 @@ Arguments:
 Options:
   -t, --template <template>  Choose template (basic, auth, full) [default: full]
   -y, --yes                  Skip prompts and use defaults
-  --no-git                   Skip git initialization
+  --git                      Initialize git repository (disabled by default)
   --no-install               Skip dependency installation
   -h, --help                 Display help for command
   -V, --version              Display version number
@@ -177,7 +179,7 @@ Options:
 Examples:
   nukta-express create my-api
   nukta-express create my-api --template auth
-  nukta-express create my-api --yes --no-git
+  nukta-express create my-api --yes --git
 ```
 
 ## 📁 Generated Project Structure
