@@ -249,12 +249,12 @@ function showNextSteps(projectName: string, config: any): void {
   console.log(chalk.gray("\n" + "─".repeat(60)));
   console.log(
     chalk.yellow(
-      "📚 Documentation: https://github.com/nukta-solutions/nukta-express"
+      "📚 Documentation: https://github.com/nuktadev/nukta-express-cli"
     )
   );
   console.log(
     chalk.yellow(
-      "🐛 Issues: https://github.com/nukta-solutions/nukta-express/issues"
+      "🐛 Issues: https://github.com/nuktadev/nukta-express-cli/issues"
     )
   );
   console.log(chalk.gray("─".repeat(60) + "\n"));
