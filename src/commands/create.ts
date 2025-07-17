@@ -65,8 +65,8 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       cors: true,
       logging: true,
       validation: true,
-      testing: true,
-      docker: true,
+      testing: false,
+      docker: false,
     };
   }
 
@@ -84,14 +84,12 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       name: "description",
       message: chalk.cyan("📝 Project description:"),
       default: `${projectName} - Express.js API`,
-      prefix: chalk.green("?"),
     },
     {
       type: "input",
       name: "author",
       message: chalk.cyan("👤 Author:"),
       default: "Nukta Solutions",
-      prefix: chalk.green("?"),
     },
     {
       type: "list",
@@ -99,7 +97,6 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       message: chalk.cyan("📄 License:"),
       choices: ["MIT", "Apache-2.0", "GPL-3.0", "ISC"],
       default: "MIT",
-      prefix: chalk.green("?"),
     },
     {
       type: "separator",
@@ -130,7 +127,6 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
         },
       ],
       default: options.template,
-      prefix: chalk.green("?"),
     },
     {
       type: "separator",
@@ -142,42 +138,36 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       message: chalk.cyan("🔐 Include authentication middleware?"),
       default: true,
       when: (answers) => answers.template !== "basic",
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "cors",
       message: chalk.cyan("🌐 Include CORS configuration?"),
       default: true,
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "logging",
       message: chalk.cyan("📊 Include logging middleware?"),
       default: true,
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "validation",
       message: chalk.cyan("✅ Include request validation?"),
       default: true,
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "testing",
       message: chalk.cyan("🧪 Include testing setup?"),
       default: true,
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "docker",
       message: chalk.cyan("🐳 Include Docker configuration?"),
       default: true,
-      prefix: chalk.green("?"),
     },
     {
       type: "separator",
@@ -188,14 +178,12 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       name: "git",
       message: chalk.cyan("📦 Initialize git repository?"),
       default: false,
-      prefix: chalk.green("?"),
     },
     {
       type: "confirm",
       name: "install",
       message: chalk.cyan("⚡ Install dependencies?"),
       default: options.install,
-      prefix: chalk.green("?"),
     },
   ]);
 

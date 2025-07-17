@@ -1,6 +1,6 @@
 {
   "name": "nukta-express",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A comprehensive Express.js boilerplate generator with TypeScript, MongoDB, and best practices",
   "main": "dist/index.js",
   "bin": {
