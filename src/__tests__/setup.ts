@@ -1,6 +1,4 @@
 // Jest setup file
-import '@types/jest';
-
 // Global test setup
 beforeAll(() => {
   // Setup any global test configuration
@@ -8,4 +6,4 @@ beforeAll(() => {
 
 afterAll(() => {
   // Cleanup after all tests
-}); 
+});
