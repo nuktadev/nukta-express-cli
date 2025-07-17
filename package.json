@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nukta-solutions/nukta-express.git"
+    "url": "https://github.com/nuktadev/nukta-express-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/nukta-solutions/nukta-express/issues"
+    "url": "https://github.com/nuktadev/nukta-express-cli/issues"
   },
-  "homepage": "https://github.com/nukta-solutions/nukta-express#readme",
+  "homepage": "https://github.com/nuktadev/nukta-express-cli#readme",
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
