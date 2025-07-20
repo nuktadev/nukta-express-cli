@@ -4,7 +4,7 @@
   "description": "A comprehensive Express.js boilerplate generator with TypeScript, MongoDB, and best practices",
   "main": "dist/index.js",
   "bin": {
-    "nukta-express": "./dist/index.js"
+    "nukta-express": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -31,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nuktadev/nukta-express-cli.git"
+    "url": "git+https://github.com/nuktadev/nukta-express-cli.git"
   },
   "bugs": {
     "url": "https://github.com/nuktadev/nukta-express-cli/issues"
