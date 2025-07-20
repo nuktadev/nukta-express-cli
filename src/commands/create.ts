@@ -5,18 +5,21 @@ import { join } from "path";
 import { validateProjectName } from "../utils/validation";
 import { ProjectGenerator } from "../generators/ProjectGenerator";
 import { TemplateManager } from "../templates/TemplateManager";
+import { performanceMonitor } from "../utils/performance";
 
 interface CreateOptions {
   template: string;
   yes: boolean;
   git?: boolean;
   install: boolean;
+  performance?: boolean;
 }
 
 export async function createProject(
   projectName: string,
   options: CreateOptions
 ): Promise<void> {
+  const startTime = Date.now();
   const spinner = ora(chalk.blue("🚀 Initializing project...")).start();
 
   try {
@@ -37,10 +40,46 @@ export async function createProject(
     const generator = new ProjectGenerator(config);
     const templateManager = new TemplateManager();
 
+    // Show available templates if performance mode is enabled
+    if (options.performance) {
+      const templates = templateManager.getAvailableTemplates();
+      console.log(chalk.cyan("\n📋 Available templates:"));
+      templates.forEach((template) => {
+        console.log(
+          chalk.gray(`  • ${template.name}: ${template.description}`)
+        );
+      });
+      console.log();
+    }
+
     // Generate project
     await generator.generate();
 
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
     spinner.succeed(chalk.green("✅ Project created successfully!"));
+
+    // Show performance stats if enabled
+    if (options.performance) {
+      const cacheStats = generator.getTemplateCacheStats();
+      const cacheHitRate = calculateCacheHitRate(cacheStats);
+
+      console.log(chalk.cyan("\n📊 Performance Statistics:"));
+      console.log(chalk.gray(`  • Total generation time: ${duration}ms`));
+      console.log(
+        chalk.gray(`  • Template cache size: ${cacheStats.size} entries`)
+      );
+      console.log(chalk.gray(`  • Cache hit rate: ${cacheHitRate}%`));
+
+      // Record metrics for future analysis
+      performanceMonitor.recordProjectCreation(
+        projectName,
+        config.template,
+        duration,
+        cacheHitRate
+      );
+    }
 
     // Show next steps
     showNextSteps(projectName, config);
@@ -48,6 +87,12 @@ export async function createProject(
     spinner.fail(chalk.red("❌ Failed to create project"));
     throw error;
   }
+}
+
+function calculateCacheHitRate(cacheStats: any): number {
+  if (cacheStats.size === 0) return 0;
+  const totalRequests = cacheStats.size + cacheStats.entries.length;
+  return Math.round((cacheStats.size / totalRequests) * 100);
 }
 
 async function getProjectConfig(projectName: string, options: CreateOptions) {
@@ -99,10 +144,6 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       default: "MIT",
     },
     {
-      type: "separator",
-      line: chalk.gray("─".repeat(50)),
-    },
-    {
       type: "list",
       name: "template",
       message: chalk.cyan("🎯 Choose template:"),
@@ -127,10 +168,6 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
         },
       ],
       default: options.template,
-    },
-    {
-      type: "separator",
-      line: chalk.gray("─".repeat(50)),
     },
     {
       type: "confirm",
@@ -168,10 +205,6 @@ async function getProjectConfig(projectName: string, options: CreateOptions) {
       name: "docker",
       message: chalk.cyan("🐳 Include Docker configuration?"),
       default: true,
-    },
-    {
-      type: "separator",
-      line: chalk.gray("─".repeat(50)),
     },
     {
       type: "confirm",

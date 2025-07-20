@@ -1,900 +1,655 @@
-import ejs from 'ejs';
-import path from 'path';
-import fs from 'fs-extra';
+import ejs from "ejs";
+import path from "path";
+import fs from "fs-extra";
+import { promisify } from "util";
+import { pipeline } from "stream";
+import { createReadStream, createWriteStream } from "fs";
+
+const pipelineAsync = promisify(pipeline);
 
 export interface TemplateFile {
   path: string;
   template: string;
   content?: string;
+  transform?: (content: string, data: any) => string;
 }
 
 export interface Template {
   name: string;
   description: string;
   files: TemplateFile[];
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+export interface TemplateCache {
+  content: string;
+  timestamp: number;
+  data: any;
 }
 
 export class TemplateManager {
   private templates: Map<string, Template>;
+  private templateCache: Map<string, TemplateCache>;
+  private templateBasePath: string;
+  private cacheExpiry: number = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.templates = new Map();
+    this.templateCache = new Map();
+    // Use absolute path to the template app
+    this.templateBasePath = path.resolve(__dirname, "../../../templete-app");
     this.initializeTemplates();
   }
 
   private initializeTemplates(): void {
-    // Basic template
-    this.templates.set('basic', {
-      name: 'basic',
-      description: 'Minimal Express.js setup with TypeScript',
+    // Basic template - minimal setup
+    this.templates.set("basic", {
+      name: "basic",
+      description: "Minimal Express.js setup with TypeScript",
       files: [
+        { path: "src/app.ts", template: "src/app.ts" },
+        { path: "src/server.ts", template: "src/server.ts" },
         {
-          path: 'src/app.ts',
-          template: 'app-basic.ejs'
+          path: "src/app/config/index.ts",
+          template: "src/app/config/index.ts",
+        },
+        { path: "src/app/constants.ts", template: "src/app/constants.ts" },
+        {
+          path: "src/app/middlewares/error-handler.ts",
+          template: "src/app/middlewares/error-handler.ts",
         },
         {
-          path: 'src/server.ts',
-          template: 'server.ejs'
+          path: "src/app/middlewares/not-found.ts",
+          template: "src/app/middlewares/not-found.ts",
         },
         {
-          path: 'src/app/config/index.ts',
-          template: 'config.ejs'
+          path: "src/app/routes/index.ts",
+          template: "src/app/routes/index.ts",
         },
-        {
-          path: 'src/app/middlewares/error-handler.ts',
-          template: 'error-handler.ejs'
-        },
-        {
-          path: 'src/app/middlewares/not-found.ts',
-          template: 'not-found.ejs'
-        },
-        {
-          path: 'src/app/routes/index.ts',
-          template: 'routes-index.ejs'
-        },
-        {
-          path: 'src/@types/index.d.ts',
-          template: 'types-index.ejs'
-        },
-        {
-          path: 'tsconfig.json',
-          template: 'tsconfig.ejs'
-        }
-      ]
+        { path: "src/@types/index.d.ts", template: "src/@types/index.d.ts" },
+        { path: "tsconfig.json", template: "tsconfig.json" },
+        { path: "package.json", template: "package.json" },
+        { path: ".gitignore", template: ".gitignore" },
+        { path: "README.md", template: "README.md" },
+      ],
+      dependencies: {
+        express: "^4.18.2",
+        dotenv: "^16.4.4",
+        cors: "^2.8.5",
+        "express-async-errors": "^3.1.1",
+        "http-status-codes": "^2.3.0",
+      },
+      devDependencies: {
+        "@types/express": "^4.17.13",
+        "@types/node": "^20.10.0",
+        "@types/cors": "^2.8.17",
+        typescript: "^5.3.2",
+        "ts-node": "^10.9.1",
+        nodemon: "^3.1.7",
+      },
     });
 
-    // Auth template
-    this.templates.set('auth', {
-      name: 'auth',
-      description: 'Express.js with authentication middleware',
+    // Auth template - with authentication
+    this.templates.set("auth", {
+      name: "auth",
+      description: "Express.js with authentication middleware",
       files: [
-        ...this.templates.get('basic')!.files,
+        ...this.templates.get("basic")!.files,
         {
-          path: 'src/app/middlewares/authentication.ts',
-          template: 'authentication.ejs'
+          path: "src/app/middlewares/authentication.ts",
+          template: "src/app/middlewares/authentication.ts",
         },
         {
-          path: 'src/app/modules/user/user.model.ts',
-          template: 'user-model.ejs'
+          path: "src/app/modules/user/user.model.ts",
+          template: "src/app/modules/user/user.model.ts",
         },
         {
-          path: 'src/app/modules/user/user.type.ts',
-          template: 'user-type.ejs'
+          path: "src/app/modules/user/user.type.ts",
+          template: "src/app/modules/user/user.type.ts",
         },
         {
-          path: 'src/app/modules/auth/auth.controller.ts',
-          template: 'auth-controller.ejs'
+          path: "src/app/modules/auth/auth.controller.ts",
+          template: "src/app/modules/auth/auth.controller.ts",
         },
         {
-          path: 'src/app/modules/auth/auth.service.ts',
-          template: 'auth-service.ejs'
+          path: "src/app/modules/auth/auth.service.ts",
+          template: "src/app/modules/auth/auth.service.ts",
         },
         {
-          path: 'src/app/modules/auth/auth.route.ts',
-          template: 'auth-route.ejs'
+          path: "src/app/modules/auth/auth.route.ts",
+          template: "src/app/modules/auth/auth.route.ts",
         },
         {
-          path: 'src/app/modules/auth/auth.type.ts',
-          template: 'auth-type.ejs'
-        }
-      ]
+          path: "src/app/modules/auth/auth.type.ts",
+          template: "src/app/modules/auth/auth.type.ts",
+        },
+        {
+          path: "src/app/shared/createJWT.ts",
+          template: "src/app/shared/createJWT.ts",
+        },
+        {
+          path: "src/app/shared/sendResponse.ts",
+          template: "src/app/shared/sendResponse.ts",
+        },
+        {
+          path: "src/app/shared/setCookie.ts",
+          template: "src/app/shared/setCookie.ts",
+        },
+        {
+          path: "src/app/shared/userTokens.ts",
+          template: "src/app/shared/userTokens.ts",
+        },
+        {
+          path: "src/app/errors/bad-request.ts",
+          template: "src/app/errors/bad-request.ts",
+        },
+        {
+          path: "src/app/errors/custom-api.ts",
+          template: "src/app/errors/custom-api.ts",
+        },
+        {
+          path: "src/app/errors/forbidden.ts",
+          template: "src/app/errors/forbidden.ts",
+        },
+        {
+          path: "src/app/errors/not-found.ts",
+          template: "src/app/errors/not-found.ts",
+        },
+        {
+          path: "src/app/errors/unauthenticated.ts",
+          template: "src/app/errors/unauthenticated.ts",
+        },
+      ],
+      dependencies: {
+        ...this.templates.get("basic")!.dependencies,
+        mongoose: "^8.2.1",
+        bcrypt: "^5.1.1",
+        jsonwebtoken: "^9.0.2",
+        "@types/bcrypt": "^5.0.2",
+        "@types/jsonwebtoken": "^9.0.2",
+      },
+      devDependencies: {
+        ...this.templates.get("basic")!.devDependencies,
+      },
     });
 
-    // Full template
-    this.templates.set('full', {
-      name: 'full',
-      description: 'Complete setup with all features',
+    // Full template - complete setup
+    this.templates.set("full", {
+      name: "full",
+      description: "Complete setup with all features",
       files: [
-        ...this.templates.get('auth')!.files,
+        ...this.templates.get("auth")!.files,
         {
-          path: 'src/app/middlewares/cors.ts',
-          template: 'cors.ejs'
+          path: "src/app/shared/QueryBuilder.ts",
+          template: "src/app/shared/QueryBuilder.ts",
         },
-        {
-          path: 'src/app/middlewares/rate-limit.ts',
-          template: 'rate-limit.ejs'
-        },
-        {
-          path: 'src/app/middlewares/security.ts',
-          template: 'security.ejs'
-        },
-        {
-          path: 'src/app/shared/validation.ts',
-          template: 'validation.ejs'
-        },
-        {
-          path: 'src/app/shared/response.ts',
-          template: 'response.ejs'
-        },
-        {
-          path: 'src/app/shared/database.ts',
-          template: 'database.ejs'
-        },
-        {
-          path: 'jest.config.js',
-          template: 'jest-config.ejs'
-        },
-        {
-          path: '.eslintrc.js',
-          template: 'eslint-config.ejs'
-        },
-        {
-          path: '.prettierrc',
-          template: 'prettier-config.ejs'
-        },
-        {
-          path: 'Dockerfile',
-          template: 'dockerfile.ejs'
-        },
-        {
-          path: 'docker-compose.yml',
-          template: 'docker-compose.ejs'
-        }
-      ]
+        { path: "jest.config.js", template: "jest.config.js" },
+        { path: ".eslintrc.js", template: ".eslintrc.js" },
+        { path: ".prettierrc", template: ".prettierrc" },
+        { path: "Dockerfile", template: "Dockerfile" },
+        { path: "docker-compose.yml", template: "docker-compose.yml" },
+      ],
+      dependencies: {
+        ...this.templates.get("auth")!.dependencies,
+        morgan: "^1.10.0",
+        "@types/morgan": "^1.9.9",
+        joi: "^17.11.0",
+        "@types/joi": "^17.2.3",
+        helmet: "^7.1.0",
+        "express-rate-limit": "^7.1.5",
+        "express-promise-router": "^4.1.1",
+      },
+      devDependencies: {
+        ...this.templates.get("auth")!.devDependencies,
+        jest: "^29.7.0",
+        "ts-jest": "^29.1.1",
+        "@types/jest": "^29.5.8",
+        supertest: "^6.3.3",
+        "@types/supertest": "^2.0.16",
+        eslint: "^8.54.0",
+        "@typescript-eslint/eslint-plugin": "^6.13.0",
+        "@typescript-eslint/parser": "^6.13.0",
+        prettier: "^3.1.0",
+        cpx: "^1.5.0",
+      },
     });
   }
 
   getTemplate(name: string): Template {
     const template = this.templates.get(name);
     if (!template) {
-      throw new Error(`Template "${name}" not found`);
+      throw new Error(
+        `Template "${name}" not found. Available templates: ${Array.from(this.templates.keys()).join(", ")}`
+      );
     }
     return template;
   }
 
+  getAvailableTemplates(): Array<{ name: string; description: string }> {
+    return Array.from(this.templates.values()).map((template) => ({
+      name: template.name,
+      description: template.description,
+    }));
+  }
+
   async renderTemplate(templateName: string, data: any): Promise<string> {
-    const templatePath = path.join(__dirname, '../templates', templateName);
-    
+    const cacheKey = `${templateName}_${JSON.stringify(data)}`;
+    const cached = this.templateCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+      return cached.content;
+    }
+
+    const templatePath = path.join(this.templateBasePath, templateName);
+
     try {
-      const templateContent = await fs.readFile(templatePath, 'utf8');
-      return ejs.render(templateContent, data, {
+      const templateContent = await fs.readFile(templatePath, "utf8");
+      const renderedContent = ejs.render(templateContent, data, {
         async: false,
-        escape: (str: string) => str
+        escape: (str: string) => str,
+        rmWhitespace: true,
+        compileDebug: false,
       });
+
+      // Cache the result
+      this.templateCache.set(cacheKey, {
+        content: renderedContent,
+        timestamp: Date.now(),
+        data,
+      });
+
+      return renderedContent;
     } catch (error) {
       // If template file doesn't exist, return default content
       return this.getDefaultContent(templateName, data);
     }
   }
 
-  private getDefaultContent(templateName: string, data: any): string {
-    switch (templateName) {
-      case 'app-basic.ejs':
-        return this.getBasicAppContent(data);
-      case 'server.ejs':
-        return this.getServerContent(data);
-      case 'config.ejs':
-        return this.getConfigContent(data);
-      case 'error-handler.ejs':
-        return this.getErrorHandlerContent(data);
-      case 'not-found.ejs':
-        return this.getNotFoundContent(data);
-      case 'routes-index.ejs':
-        return this.getRoutesIndexContent(data);
-      case 'types-index.ejs':
-        return this.getTypesIndexContent(data);
-      case 'tsconfig.ejs':
-        return this.getTsConfigContent(data);
-      case 'authentication.ejs':
-        return this.getAuthenticationContent(data);
-      case 'user-model.ejs':
-        return this.getUserModelContent(data);
-      case 'user-type.ejs':
-        return this.getUserTypeContent(data);
-      case 'auth-controller.ejs':
-        return this.getAuthControllerContent(data);
-      case 'auth-service.ejs':
-        return this.getAuthServiceContent(data);
-      case 'auth-route.ejs':
-        return this.getAuthRouteContent(data);
-      case 'auth-type.ejs':
-        return this.getAuthTypeContent(data);
-      case 'cors.ejs':
-        return this.getCorsContent(data);
-      case 'rate-limit.ejs':
-        return this.getRateLimitContent(data);
-      case 'security.ejs':
-        return this.getSecurityContent(data);
-      case 'validation.ejs':
-        return this.getValidationContent(data);
-      case 'response.ejs':
-        return this.getResponseContent(data);
-      case 'database.ejs':
-        return this.getDatabaseContent(data);
-      case 'jest-config.ejs':
-        return this.getJestConfigContent(data);
-      case 'eslint-config.ejs':
-        return this.getEslintConfigContent(data);
-      case 'prettier-config.ejs':
-        return this.getPrettierConfigContent(data);
-      case 'dockerfile.ejs':
-        return this.getDockerfileContent(data);
-      case 'docker-compose.ejs':
-        return this.getDockerComposeContent(data);
-      default:
-        return '';
+  async renderTemplateFile(
+    fileConfig: TemplateFile,
+    data: any
+  ): Promise<string> {
+    const content = await this.renderTemplate(fileConfig.template, data);
+
+    if (fileConfig.transform) {
+      return fileConfig.transform(content, data);
+    }
+
+    return content;
+  }
+
+  async copyTemplateFile(
+    sourcePath: string,
+    targetPath: string,
+    data: any
+  ): Promise<void> {
+    const sourceFullPath = path.join(this.templateBasePath, sourcePath);
+    const targetFullPath = path.resolve(process.cwd(), targetPath);
+
+    try {
+      // Ensure target directory exists
+      await fs.ensureDir(path.dirname(targetFullPath));
+
+      // Check if source file exists
+      if (await fs.pathExists(sourceFullPath)) {
+        // Read and render template
+        const content = await this.renderTemplate(sourcePath, data);
+        await fs.writeFile(targetFullPath, content);
+      } else {
+        // Use default content if template doesn't exist
+        const defaultContent = this.getDefaultContent(
+          path.basename(sourcePath),
+          data
+        );
+        await fs.writeFile(targetFullPath, defaultContent);
+      }
+    } catch (error) {
+      throw new Error(`Failed to copy template file ${sourcePath}: ${error}`);
     }
   }
 
-  // Template content methods
-  private getBasicAppContent(data: any): string {
-    return `import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { join } from 'path';
-
-import errorHandleMiddleware from './middlewares/error-handler';
-import notFoundMiddleware from './middlewares/not-found';
-import routes from './routes';
-
-dotenv.config({ path: join(process.cwd(), '.env') });
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to ${data.name} API',
-    version: '1.0.0',
-    status: 'running'
-  });
-});
-
-app.use('/api/v1', routes);
-
-// Error handling
-app.use(notFoundMiddleware);
-app.use(errorHandleMiddleware);
-
-export default app;
-`;
-  }
-
-  private getServerContent(data: any): string {
-    return `import mongoose from 'mongoose';
-import app from './app';
-
-const port = process.env.PORT || 5000;
-const databaseUrl = process.env.DATABASE_URL || 'mongodb://localhost:27017/${data.name}';
-
-// Connect to MongoDB
-mongoose
-  .connect(databaseUrl)
-  .then(() => {
-    console.log('Connected to MongoDB');
-  })
-  .catch((err) => {
-    console.error('Error connecting to MongoDB:', err);
-    process.exit(1);
-  });
-
-// Start server
-app.listen(port, '0.0.0.0', () => {
-  console.log(\`Server is running on port \${port} at http://localhost:\${port}\`);
-});
-`;
-  }
-
-  private getConfigContent(data: any): string {
-    return `import dotenv from 'dotenv';
-import { join } from 'path';
-
-dotenv.config({ path: join(process.cwd(), '.env') });
-
-export default {
-  port: process.env.PORT || 5000,
-  node_env: process.env.NODE_ENV || 'development',
-  database_url: process.env.DATABASE_URL || 'mongodb://localhost:27017/${data.name}',
-  jwt_secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key',
-  jwt_expire: process.env.JWT_EXPIRE || '7d',
-  bcrypt_salt_rounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10'),
-  cors_origin: process.env.CORS_ORIGIN || 'http://localhost:3000'
-};
-`;
-  }
-
-  private getErrorHandlerContent(data: any): string {
-    return `import { Request, Response, NextFunction } from 'express';
-
-interface CustomError extends Error {
-  statusCode?: number;
-  status?: string;
-  isOperational?: boolean;
-}
-
-const errorHandleMiddleware = (
-  err: CustomError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-
-  res.status(statusCode).json({
-    success: false,
-    error: {
-      message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    }
-  });
-};
-
-export default errorHandleMiddleware;
-`;
-  }
-
-  private getNotFoundContent(data: any): string {
-    return `import { Request, Response, NextFunction } from 'express';
-
-const notFoundMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const error = new Error(\`Route \${req.originalUrl} not found\`) as any;
-  error.statusCode = 404;
-  next(error);
-};
-
-export default notFoundMiddleware;
-`;
-  }
-
-  private getRoutesIndexContent(data: any): string {
-    return `import { Router } from 'express';
-
-const router = Router();
-
-// Health check route
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
-
-export default router;
-`;
-  }
-
-  private getTypesIndexContent(data: any): string {
-    return `declare global {
-  namespace Express {
-    export interface Request {
-      user?: any;
-    }
-  }
-}
-
-export {};
-`;
-  }
-
-  private getTsConfigContent(data: any): string {
-    return `{
-  "compilerOptions": {
-    "target": "es2016",
-    "lib": ["ES2021.String"],
-    "module": "commonjs",
-    "rootDir": "./src",
-    "typeRoots": [
-      "@types",
-      "node_modules/@types"
-    ],
-    "sourceMap": true,
-    "outDir": "./build",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
-  },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "build"
-  ]
-}`;
-  }
-
-  // Additional template content methods would go here...
-  private getAuthenticationContent(data: any): string {
-    return `import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import config from '../config';
-
-interface AuthRequest extends Request {
-  user?: any;
-}
-
-const authentication = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access denied. No token provided.'
-      });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, config.jwt_secret);
-    
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid token.'
+  async processTemplateFiles(
+    template: Template,
+    data: any,
+    targetDir: string
+  ): Promise<void> {
+    const tasks = template.files.map(async (fileConfig) => {
+      const targetPath = path.join(targetDir, fileConfig.path);
+      await this.copyTemplateFile(fileConfig.template, targetPath, data);
     });
-  }
-};
 
-export default authentication;
-`;
+    // Process files in parallel for better performance
+    await Promise.all(tasks);
   }
 
-  private getUserModelContent(data: any): string {
-    return `import mongoose, { Schema, Document } from 'mongoose';
-import bcrypt from 'bcrypt';
+  private getDefaultContent(templateName: string, data: any): string {
+    // Fallback content for missing templates
+    const fileName = path.basename(templateName);
 
-export interface IUser extends Document {
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-  isActive: boolean;
-  comparePassword(candidatePassword: string): Promise<boolean>;
-}
-
-const userSchema = new Schema<IUser>({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: 6
-  },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-}, {
-  timestamps: true
-});
-
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error as Error);
-  }
-});
-
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-export default mongoose.model<IUser>('User', userSchema);
-`;
-  }
-
-  private getUserTypeContent(data: any): string {
-    return `export interface IUser {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IUserCreate {
-  name: string;
-  email: string;
-  password: string;
-  role?: string;
-}
-
-export interface IUserUpdate {
-  name?: string;
-  email?: string;
-  password?: string;
-  role?: string;
-  isActive?: boolean;
-}
-`;
-  }
-
-  private getAuthControllerContent(data: any): string {
-    return `import { Request, Response } from 'express';
-import { AuthService } from './auth.service';
-import { IUserCreate, IUserUpdate } from '../user/user.type';
-
-export class AuthController {
-  static async register(req: Request, res: Response) {
-    try {
-      const userData: IUserCreate = req.body;
-      const result = await AuthService.register(userData);
-      
-      res.status(201).json({
-        success: true,
-        data: result
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+    switch (fileName) {
+      case "package.json":
+        return this.generatePackageJson(data);
+      case "tsconfig.json":
+        return this.generateTsConfig(data);
+      case ".gitignore":
+        return this.generateGitignore(data);
+      case "README.md":
+        return this.generateReadme(data);
+      case "jest.config.js":
+        return this.generateJestConfig(data);
+      case ".eslintrc.js":
+        return this.generateEslintConfig(data);
+      case ".prettierrc":
+        return this.generatePrettierConfig(data);
+      case "Dockerfile":
+        return this.generateDockerfile(data);
+      case "docker-compose.yml":
+        return this.generateDockerCompose(data);
+      default:
+        return `// Generated file: ${fileName}\n// Template: ${templateName}\n`;
     }
   }
 
-  static async login(req: Request, res: Response) {
-    try {
-      const { email, password } = req.body;
-      const result = await AuthService.login(email, password);
-      
-      res.json({
-        success: true,
-        data: result
-      });
-    } catch (error: any) {
-      res.status(401).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
+  private generatePackageJson(data: any): string {
+    const template = this.templates.get(data.template);
+    const dependencies = template?.dependencies || {};
+    const devDependencies = template?.devDependencies || {};
 
-  static async getProfile(req: Request, res: Response) {
-    try {
-      const user = req.user;
-      
-      res.json({
-        success: true,
-        data: user
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-}
-`;
-  }
-
-  private getAuthServiceContent(data: any): string {
-    return `import jwt from 'jsonwebtoken';
-import User, { IUser } from '../user/user.model';
-import { IUserCreate } from '../user/user.type';
-import config from '../../config';
-
-export class AuthService {
-  static async register(userData: IUserCreate) {
-    const { email } = userData;
-    
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw new Error('User already exists');
-    }
-
-    // Create new user
-    const user = await User.create(userData);
-    
-    // Generate token
-    const token = this.generateToken(user);
-    
-    return {
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      token
-    };
-  }
-
-  static async login(email: string, password: string) {
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      throw new Error('Invalid credentials');
-    }
-
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
-    }
-
-    // Generate token
-    const token = this.generateToken(user);
-    
-    return {
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      token
-    };
-  }
-
-  private static generateToken(user: IUser): string {
-    return jwt.sign(
+    return JSON.stringify(
       {
-        _id: user._id,
-        email: user.email,
-        role: user.role
+        name: data.name,
+        version: "1.0.0",
+        description: data.description,
+        main: "src/server.ts",
+        repository: {
+          type: "git",
+          url: `https://github.com/${data.author}/${data.name}.git`,
+        },
+        author: data.author,
+        license: data.license,
+        scripts: {
+          build: "npx tsc && npm run copy-keys",
+          start: "node build/server.js",
+          dev: "nodemon src/server.ts",
+          "copy-keys": 'cpx "src/keys/**/*" build/keys',
+          test: "jest",
+          "test:watch": "jest --watch",
+          lint: "eslint src/**/*.ts",
+          format: "prettier --write src/**/*.ts",
+        },
+        dependencies,
+        devDependencies,
       },
-      config.jwt_secret,
-      { expiresIn: config.jwt_expire }
+      null,
+      2
     );
   }
-}
-`;
+
+  private generateTsConfig(data: any): string {
+    return JSON.stringify(
+      {
+        compilerOptions: {
+          target: "ES2020",
+          module: "commonjs",
+          lib: ["ES2020"],
+          outDir: "./build",
+          rootDir: "./src",
+          strict: true,
+          esModuleInterop: true,
+          skipLibCheck: true,
+          forceConsistentCasingInFileNames: true,
+          resolveJsonModule: true,
+          declaration: true,
+          declarationMap: true,
+          sourceMap: true,
+          removeComments: true,
+          noImplicitAny: true,
+          strictNullChecks: true,
+          strictFunctionTypes: true,
+          noImplicitThis: true,
+          noImplicitReturns: true,
+          noFallthroughCasesInSwitch: true,
+          moduleResolution: "node",
+          baseUrl: "./",
+          paths: {
+            "@/*": ["src/*"],
+          },
+          allowSyntheticDefaultImports: true,
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
+        include: ["src/**/*"],
+        exclude: [
+          "node_modules",
+          "build",
+          "dist",
+          "**/*.test.ts",
+          "**/*.spec.ts",
+        ],
+      },
+      null,
+      2
+    );
   }
 
-  private getAuthRouteContent(data: any): string {
-    return `import { Router } from 'express';
-import { AuthController } from './auth.controller';
-import authentication from '../../middlewares/authentication';
+  private generateGitignore(data: any): string {
+    return `# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-const router = Router();
+# Build outputs
+build/
+dist/
+*.tsbuildinfo
 
-// Public routes
-router.post('/register', AuthController.register);
-router.post('/login', AuthController.login);
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-// Protected routes
-router.get('/profile', authentication, AuthController.getProfile);
+# Logs
+logs
+*.log
 
-export default router;
-`;
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys and certificates
+src/keys/
+*.pem
+*.key
+*.crt
+
+# Docker
+.dockerignore`;
   }
 
-  private getAuthTypeContent(data: any): string {
-    return `export interface ILoginRequest {
-  email: string;
-  password: string;
-}
+  private generateReadme(data: any): string {
+    return `# ${data.name}
 
-export interface IRegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-  role?: string;
-}
+${data.description}
 
-export interface IAuthResponse {
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
-  token: string;
-}
-`;
+## Features
+
+- Express.js with TypeScript
+- MongoDB with Mongoose
+- Authentication & Authorization
+- Request validation
+- Error handling middleware
+- Logging
+- CORS configuration
+- Rate limiting
+- Security headers
+${data.testing ? "- Unit and integration testing\n" : ""}${data.docker ? "- Docker configuration\n" : ""}
+## Quick Start
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- MongoDB
+${data.docker ? "- Docker (optional)\n" : ""}
+### Installation
+
+\`\`\`bash
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start development server
+npm run dev
+\`\`\`
+
+### Available Scripts
+
+- \`npm run dev\` - Start development server
+- \`npm run build\` - Build for production
+- \`npm start\` - Start production server
+- \`npm test\` - Run tests
+- \`npm run lint\` - Run ESLint
+- \`npm run format\` - Format code with Prettier
+
+## Project Structure
+
+\`\`\`
+src/
+├── app/
+│   ├── config/          # Configuration files
+│   ├── constants.ts     # Application constants
+│   ├── errors/          # Custom error classes
+│   ├── middlewares/     # Express middlewares
+│   ├── modules/         # Feature modules
+│   │   ├── auth/        # Authentication module
+│   │   └── user/        # User module
+│   ├── routes/          # Route definitions
+│   └── shared/          # Shared utilities
+├── @types/              # TypeScript type definitions
+├── app.ts               # Express app configuration
+└── server.ts            # Server entry point
+\`\`\`
+
+## Environment Variables
+
+Create a \`.env\` file in the root directory:
+
+\`\`\`env
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/your-database
+JWT_SECRET=your-jwt-secret
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_SECRET=your-refresh-secret
+JWT_REFRESH_EXPIRES_IN=30d
+\`\`\`
+
+## API Documentation
+
+### Authentication Endpoints
+
+- \`POST /api/v1/auth/register\` - Register a new user
+- \`POST /api/v1/auth/login\` - Login user
+- \`GET /api/v1/auth/profile\` - Get user profile
+- \`POST /api/v1/auth/refresh-token\` - Refresh access token
+- \`PATCH /api/v1/auth/reset-password\` - Reset password
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the ${data.license} License.
+
+## Support
+
+For support, email support@nukta.dev or create an issue in the repository.`;
   }
 
-  private getCorsContent(data: any): string {
-    return `import cors from 'cors';
-import config from '../config';
-
-const corsOptions = {
-  origin: config.cors_origin,
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-export default cors(corsOptions);
-`;
-  }
-
-  private getRateLimitContent(data: any): string {
-    return `import rateLimit from 'express-rate-limit';
-
-export const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again later.'
-  }
-});
-
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    success: false,
-    message: 'Too many authentication attempts, please try again later.'
-  }
-});
-`;
-  }
-
-  private getSecurityContent(data: any): string {
-    return `import helmet from 'helmet';
-
-export default helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  }
-});
-`;
-  }
-
-  private getValidationContent(data: any): string {
-    return `import Joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
-
-export const validate = (schema: Joi.ObjectSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const { error } = schema.validate(req.body);
-    
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details[0].message
-      });
-    }
-    
-    next();
-  };
-};
-
-// Common validation schemas
-export const userSchemas = {
-  register: Joi.object({
-    name: Joi.string().required().min(2).max(50),
-    email: Joi.string().email().required(),
-    password: Joi.string().required().min(6),
-    role: Joi.string().valid('user', 'admin').optional()
-  }),
-  
-  login: Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required()
-  })
-};
-`;
-  }
-
-  private getResponseContent(data: any): string {
-    return `import { Response } from 'express';
-
-export const sendResponse = (
-  res: Response,
-  statusCode: number,
-  success: boolean,
-  message: string,
-  data?: any
-) => {
-  const response: any = {
-    success,
-    message
-  };
-
-  if (data !== undefined) {
-    response.data = data;
-  }
-
-  return res.status(statusCode).json(response);
-};
-
-export const sendSuccess = (res: Response, data?: any, message = 'Success') => {
-  return sendResponse(res, 200, true, message, data);
-};
-
-export const sendCreated = (res: Response, data?: any, message = 'Created successfully') => {
-  return sendResponse(res, 201, true, message, data);
-};
-
-export const sendError = (res: Response, message = 'Error occurred', statusCode = 400) => {
-  return sendResponse(res, statusCode, false, message);
-};
-`;
-  }
-
-  private getDatabaseContent(data: any): string {
-    return `import mongoose from 'mongoose';
-import config from '../config';
-
-export const connectDatabase = async (): Promise<void> => {
-  try {
-    await mongoose.connect(config.database_url);
-    console.log('Connected to MongoDB');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
-};
-
-export const disconnectDatabase = async (): Promise<void> => {
-  try {
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
-  } catch (error) {
-    console.error('MongoDB disconnection error:', error);
-  }
-};
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  await disconnectDatabase();
-  process.exit(0);
-});
-`;
-  }
-
-  private getJestConfigContent(data: any): string {
+  private generateJestConfig(data: any): string {
     return `module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -906,15 +661,16 @@ process.on('SIGINT', async () => {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
+    '!src/**/*.test.ts',
+    '!src/**/*.spec.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-};
-`;
+};`;
   }
 
-  private getEslintConfigContent(data: any): string {
+  private generateEslintConfig(data: any): string {
     return `module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
@@ -932,15 +688,14 @@ process.on('SIGINT', async () => {
   },
   rules: {
     '@typescript-eslint/no-unused-vars': 'error',
-    '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
   },
-};
-`;
+};`;
   }
 
-  private getPrettierConfigContent(data: any): string {
+  private generatePrettierConfig(data: any): string {
     return `{
   "semi": true,
   "trailingComma": "es5",
@@ -951,31 +706,25 @@ process.on('SIGINT', async () => {
 }`;
   }
 
-  private getDockerfileContent(data: any): string {
+  private generateDockerfile(data: any): string {
     return `FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 
-# Install dependencies
 RUN npm ci --only=production
 
-# Copy source code
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Expose port
 EXPOSE 5000
 
-# Start the application
 CMD ["npm", "start"]`;
   }
 
-  private getDockerComposeContent(data: any): string {
+  private generateDockerCompose(data: any): string {
     return `version: '3.8'
 
 services:
@@ -985,7 +734,7 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=mongodb://mongo:27017/${data.name}
+      - MONGODB_URI=mongodb://mongo:27017/${data.name}
     depends_on:
       - mongo
     restart: unless-stopped
@@ -1001,4 +750,28 @@ services:
 volumes:
   mongodb_data:`;
   }
-} 
+
+  // Performance optimization: Clear cache
+  clearCache(): void {
+    this.templateCache.clear();
+  }
+
+  // Performance optimization: Get cache stats
+  getCacheStats(): {
+    size: number;
+    entries: Array<{ key: string; age: number }>;
+  } {
+    const now = Date.now();
+    const entries = Array.from(this.templateCache.entries()).map(
+      ([key, value]) => ({
+        key,
+        age: now - value.timestamp,
+      })
+    );
+
+    return {
+      size: this.templateCache.size,
+      entries,
+    };
+  }
+}
