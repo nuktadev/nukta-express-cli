@@ -69,8 +69,8 @@ export class TemplateManager {
           template: "src/app/middlewares/error-handler.ts",
         },
         {
-          path: "src/app/middlewares/not-found.ts",
-          template: "src/app/middlewares/not-found.ts",
+          path: "src/app/middlewares/not-found-middleware.ts",
+          template: "src/app/middlewares/not-found-middleware.ts",
         },
         {
           path: "src/app/routes/index.ts",
