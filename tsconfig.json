@@ -18,12 +18,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "templates"
-  ]
-} 
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "templates", "src/templete-app"]
+}
