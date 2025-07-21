@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { join } from "path";
-import notFoundMiddleware from "./app/middlewares/not-found";
+import notFoundMiddleware from "./app/middlewares/not-found-middleware";
 import errorHandler from "./app/middlewares/error-handler";
 import routes from "./app/routes";
 
