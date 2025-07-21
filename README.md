@@ -2,6 +2,11 @@
 
 A high-performance, comprehensive Express.js boilerplate generator with TypeScript, MongoDB, and best practices. Built with efficiency and developer experience in mind.
 
+[![npm version](https://img.shields.io/npm/v/nukta-express.svg)](https://www.npmjs.com/package/nukta-express)
+[![npm downloads](https://img.shields.io/npm/dm/nukta-express.svg)](https://www.npmjs.com/package/nukta-express)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)](https://nodejs.org/)
+
 ## 🚀 Features
 
 ### Core Features
@@ -27,7 +32,7 @@ A high-performance, comprehensive Express.js boilerplate generator with TypeScri
 ## 📦 Installation
 
 ```bash
-npm install -g nukta-express-cli
+npm install -g nukta-express
 ```
 
 ## 🎯 Quick Start
@@ -48,11 +53,44 @@ nukta-express create my-api --template auth
 nukta-express create my-api --performance
 ```
 
+### Quick Examples
+
+```bash
+# Create a basic Express.js project
+nukta-express create my-api --template basic -y
+
+# Create a project with authentication
+nukta-express create my-api --template auth -y
+
+# Create a full-featured project
+nukta-express create my-api --template full -y
+```
+
 ### Available Templates
 
 - **Basic**: Minimal Express.js setup with TypeScript
+  - Express.js with TypeScript
+  - Basic middleware setup
+  - Error handling
+  - CORS configuration
+  - Environment variables
+
 - **Auth**: Express.js with authentication middleware (includes user management)
+  - Everything from Basic template
+  - JWT authentication
+  - User management (CRUD)
+  - Password hashing with bcrypt
+  - Authentication middleware
+  - MongoDB with Mongoose
+
 - **Full**: Complete setup with all features (recommended)
+  - Everything from Auth template
+  - Testing setup with Jest
+  - ESLint and Prettier configuration
+  - Docker and Docker Compose
+  - Rate limiting
+  - Security headers
+  - Advanced error handling
 
 ## 🛠️ Commands
 
@@ -198,6 +236,13 @@ BCRYPT_SALT_ROUNDS=12
 - **Subsequent Runs**: 85-95% cache hit rate
 - **Memory Usage**: <50MB for typical projects
 
+### Package Statistics
+
+- **Current Version**: 1.0.16
+- **Package Size**: ~403.7 kB
+- **Total Files**: 166
+- **Dependencies**: 7 production, 14 development
+
 ## 🔍 Troubleshooting
 
 ### Common Issues
@@ -208,6 +253,17 @@ BCRYPT_SALT_ROUNDS=12
 # Clear cache and retry
 nukta-express cache --clear
 nukta-express create my-api
+```
+
+**Import errors after project creation**
+
+```bash
+# Install dependencies first
+cd my-api
+npm install
+
+# Then start the development server
+npm run dev
 ```
 
 **Slow generation**
@@ -227,6 +283,14 @@ nukta-express cache --clear
 cd my-api
 npm install
 ```
+
+### Recent Fixes (v1.0.16+)
+
+- ✅ Fixed template file path resolution issues
+- ✅ Resolved import path mismatches in generated projects
+- ✅ Improved template file copying during build process
+- ✅ Enhanced error handling for missing template files
+- ✅ Fixed TypeScript compilation issues in generated projects
 
 ## 🤝 Contributing
 
@@ -255,6 +319,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📚 [Documentation](https://github.com/nuktadev/nukta-express-cli)
 - 🐛 [Issues](https://github.com/nuktadev/nukta-express-cli/issues)
 - 💬 [Discussions](https://github.com/nuktadev/nukta-express-cli/discussions)
+- 📧 Email: nukta.dev@gmail.com
+
+## 🎯 What's New in v1.0.16
+
+- 🔧 **Fixed Import Issues**: Resolved template file path mismatches
+- 🚀 **Improved Build Process**: Enhanced template file copying
+- 🐛 **Better Error Handling**: More informative error messages
+- ⚡ **Performance Optimizations**: Faster project generation
+- 📦 **Updated Dependencies**: Latest package versions
 
 ## 🙏 Acknowledgments
 

@@ -37,8 +37,17 @@ export class TemplateManager {
   constructor() {
     this.templates = new Map();
     this.templateCache = new Map();
-    // Use absolute path to the template app
-    this.templateBasePath = path.resolve(__dirname, "../../../templete-app");
+    // Use absolute path to the template app - check both src and dist directories
+    const srcPath = path.resolve(__dirname, "../../src/templete-app");
+    const distPath = path.resolve(__dirname, "../templete-app");
+
+    // Check if we're in development (src exists) or production (dist exists)
+    if (require("fs").existsSync(srcPath)) {
+      this.templateBasePath = srcPath;
+    } else {
+      this.templateBasePath = distPath;
+    }
+
     this.initializeTemplates();
   }
 
@@ -60,8 +69,8 @@ export class TemplateManager {
           template: "src/app/middlewares/error-handler.ts",
         },
         {
-          path: "src/app/middlewares/not-found.ts",
-          template: "src/app/middlewares/not-found.ts",
+          path: "src/app/middlewares/not-found-middleware.ts",
+          template: "src/app/middlewares/not-found-middleware.ts",
         },
         {
           path: "src/app/routes/index.ts",
@@ -261,6 +270,7 @@ export class TemplateManager {
 
       return renderedContent;
     } catch (error) {
+      console.error(`Error reading template ${templatePath}:`, error);
       // If template file doesn't exist, return default content
       return this.getDefaultContent(templateName, data);
     }
