@@ -38,7 +38,7 @@ export class TemplateManager {
     this.templates = new Map();
     this.templateCache = new Map();
     // Use absolute path to the template app
-    this.templateBasePath = path.resolve(__dirname, "../../../templete-app");
+    this.templateBasePath = path.resolve(__dirname, "../templete-app");
     this.initializeTemplates();
   }
 
